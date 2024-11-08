@@ -55,11 +55,13 @@
 	{#each sensors as { name, description }}
 		<li title={description}>
 			<strong>{name}:</strong>
-			<code class={sensorAvailabilities[name] ? 'text-green-600' : 'text-red-600'}>
+			<code>
 				{#if sensorAvailabilities[name] === null}
-					Checking...
+					<span class="text-gray-500"> Checking... </span>
 				{:else}
-					{sensorAvailabilities[name]}
+					<span class={sensorAvailabilities[name] ? 'text-green-600' : 'text-red-600'}>
+						{sensorAvailabilities[name]}
+					</span>
 				{/if}
 			</code>
 		</li>
