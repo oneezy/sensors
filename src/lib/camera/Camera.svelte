@@ -2,12 +2,14 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import { sensor } from '$lib/sensor/sensors.svelte.js';
+	import Fullscreen from '$lib/fullscreen/Fullscreen.svelte';
 
 	let videoElement;
 	let stream;
 	let error = null;
 
 	// Variable for speed in mph
+	let geolocationData = null;
 	let speedMph = null;
 
 	// Reference for cleanup
@@ -32,10 +34,19 @@
 
 			// Initialize geolocation sensor
 			geolocationCleanup = sensor('Geolocation', (available, data) => {
-				if (available && data !== null) {
-					speedMph = data;
+				if (available && data) {
+					geolocationData = data;
+
+					// Perform speed conversion here
+					const speedMps = data.coords.speed; // Speed in meters per second
+					if (speedMps !== null && !isNaN(speedMps)) {
+						speedMph = (speedMps * 2.23694).toFixed(2); // Convert to mph
+					} else {
+						speedMph = null;
+					}
 				} else {
-					speedMph = 'Speed not available';
+					geolocationData = null;
+					speedMph = null;
 				}
 			});
 		} else {
@@ -64,8 +75,9 @@
 		</video>
 		<div class="overlay h-100 w-100 absolute inset-0 flex items-center justify-center">
 			<!-- Display speedMph here -->
-			<p class="speed">{speedMph !== null ? `${speedMph.toFixed(2)} MPH` : '0 MPH'}</p>
+			<p class="speed">{speedMph !== null ? `${speedMph} MPH` : '0 MPH'}</p>
 		</div>
+		<Fullscreen />
 	</div>
 {/if}
 
