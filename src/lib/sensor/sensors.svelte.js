@@ -156,8 +156,12 @@ export function checkGeolocation(callback) {
 									altitudeAccuracy: position.coords.altitudeAccuracy,
 									heading: position.coords.heading,
 									speed: position.coords.speed,
-									speedKph: position.coords.speed ? position.coords.speed * 3.6 + ' /kph' : null, // Convert to kph
-									speedMph: position.coords.speed ? position.coords.speed * 2.23694 + ' /mph' : null // Convert to mph
+									speedKph: position.coords.speed
+										? (position.coords.speed * 3.6).toFixed() + ' /kph'
+										: null, // Convert to kph
+									speedMph: position.coords.speed
+										? (position.coords.speed * 2.23694).toFixed() + ' /mph'
+										: null // Convert to mph
 								}
 							};
 							// Call the callback with available = true and data
