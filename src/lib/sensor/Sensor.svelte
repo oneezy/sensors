@@ -34,7 +34,13 @@
 	// Cleanup when the component is destroyed
 	onDestroy(() => {
 		Object.values(cleanupFunctions).forEach((cleanup) => {
-			cleanup();
+			if (typeof cleanup === 'function') {
+				// It's a cleanup function
+				cleanup();
+			} else if (cleanup && typeof cleanup.stop === 'function') {
+				// It's a sensor instance with a stop method
+				cleanup.stop();
+			}
 		});
 	});
 </script>
