@@ -48,7 +48,7 @@
 					<span class="text-gray-500"> Checking... </span>
 				{:else}
 					<span class={sensorAvailabilities[name].available ? 'text-green-600' : 'text-red-600'}>
-						{sensorAvailabilities[name].available ? 'Available' : 'Not Available'}
+						{sensorAvailabilities[name].available ? true : false}
 					</span>
 					{#if sensorAvailabilities[name].available && sensorAvailabilities[name].data}
 						<pre>{JSON.stringify(sensorAvailabilities[name].data, null, 2)}</pre>

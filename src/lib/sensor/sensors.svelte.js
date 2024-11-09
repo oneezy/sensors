@@ -137,16 +137,51 @@ export function checkBattery(callback) {
 
 export function checkGeolocation(callback) {
 	if ('geolocation' in navigator) {
+		// Request permission to access location
 		navigator.permissions
 			.query({ name: 'geolocation' })
 			.then((result) => {
 				if (result.state === 'granted' || result.state === 'prompt') {
-					callback(true, null);
+					// Start watching the position
+					const watchId = navigator.geolocation.watchPosition(
+						(position) => {
+							// Extract position data
+							const data = {
+								timestamp: position.timestamp,
+								coords: {
+									latitude: position.coords.latitude,
+									longitude: position.coords.longitude,
+									altitude: position.coords.altitude,
+									accuracy: position.coords.accuracy,
+									altitudeAccuracy: position.coords.altitudeAccuracy,
+									heading: position.coords.heading,
+									speed: position.coords.speed
+								}
+							};
+							// Call the callback with available = true and data
+							callback(true, data);
+						},
+						(error) => {
+							console.error('Geolocation error:', error);
+							callback(false, null);
+						},
+						{
+							enableHighAccuracy: true,
+							maximumAge: 0,
+							timeout: Infinity
+						}
+					);
+
+					// Return a cleanup function to stop watching the position
+					return () => {
+						navigator.geolocation.clearWatch(watchId);
+					};
 				} else {
 					callback(false, null);
 				}
 			})
-			.catch(() => {
+			.catch((error) => {
+				console.error('Geolocation permission error:', error);
 				callback(false, null);
 			});
 	} else {
