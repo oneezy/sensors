@@ -70,7 +70,12 @@
 	<p>Error: {error.message}</p>
 {:else}
 	<div class="camera-container flex items-center justify-center">
-		<video bind:this={videoElement} autoplay playsinline>
+		<video
+			bind:this={videoElement}
+			autoplay
+			playsinline
+			class="absolute inset-0 h-screen w-screen object-cover"
+		>
 			<track kind="captions" />
 		</video>
 		<div class="overlay h-100 w-100 absolute inset-0 flex items-center justify-center">
@@ -91,11 +96,7 @@
 		inset: 0;
 		width: 100%;
 		height: 100%;
-	}
-	video {
-		width: 100%;
-		height: 100%;
-		height: auto;
+		overflow: hidden;
 	}
 	.overlay {
 		width: 100%;
