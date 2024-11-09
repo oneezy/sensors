@@ -5,7 +5,7 @@ import { browser } from '$app/environment';
 
 const sensorMap = {
 	// Sensor Name: Sensor API Type or Availability Function
-	Geolocation: checkGeolocationAvailability,
+	Geolocation: checkGeolocation,
 	Accelerometer: 'Accelerometer',
 	LinearAccelerationSensor: 'LinearAccelerationSensor',
 	GravitySensor: 'GravitySensor',
@@ -17,10 +17,9 @@ const sensorMap = {
 	AmbientLightSensor: 'AmbientLightSensor',
 	PressureSensor: 'PressureSensor',
 	ProximitySensor: 'ProximitySensor',
-	DeviceMotionEvent: checkDeviceMotionAvailability,
-	DeviceOrientationEvent: checkDeviceOrientationAvailability,
-	Battery: checkBatteryAvailability
-	// Add other sensors as needed
+	DeviceMotionEvent: checkMotion,
+	DeviceOrientationEvent: checkOrientation,
+	Battery: checkBattery
 };
 
 export function sensor(sensorName, callback) {
@@ -37,7 +36,7 @@ export function sensor(sensorName, callback) {
 
 	if (typeof sensorEntry === 'string') {
 		// It's a sensor API type
-		checkGenericSensorAvailability(sensorEntry, callback);
+		checkSensors(sensorEntry, callback);
 	} else if (typeof sensorEntry === 'function') {
 		// It's a function
 		sensorEntry(callback);
@@ -46,42 +45,49 @@ export function sensor(sensorName, callback) {
 	}
 }
 
-function checkGenericSensorAvailability(sensorType, callback) {
+export function checkSensors(sensorType, callback) {
 	if (sensorType in window) {
 		try {
 			const sensor = new window[sensorType]();
 			sensor.addEventListener('error', (event) => {
 				if (event.error.name === 'NotAllowedError') {
 					console.log(`Permission to access ${sensorType} was denied.`);
-					callback(false);
+					callback(false, null);
 				} else if (event.error.name === 'NotReadableError') {
 					console.log(`Cannot connect to the ${sensorType}.`);
-					callback(false);
+					callback(false, null);
 				}
 			});
 			sensor.addEventListener('reading', () => {
-				callback(true);
+				// Extract all properties of the sensor instance
+				const data = {};
+				for (const key in sensor) {
+					if (typeof sensor[key] !== 'function') {
+						data[key] = sensor[key];
+					}
+				}
+				callback(true, data);
 				sensor.stop();
 			});
 			sensor.start();
 		} catch (error) {
 			if (error.name === 'SecurityError') {
 				console.log(`${sensorType} construction was blocked by the Permissions Policy.`);
-				callback(false);
+				callback(false, null);
 			} else if (error.name === 'ReferenceError') {
 				console.log(`${sensorType} is not supported by the User Agent.`);
-				callback(false);
+				callback(false, null);
 			} else {
 				console.error(`${sensorType} error:`, error);
-				callback(false);
+				callback(false, null);
 			}
 		}
 	} else {
-		callback(false);
+		callback(false, null);
 	}
 }
 
-function checkGeolocationAvailability(callback) {
+export function checkGeolocation(callback) {
 	if ('geolocation' in navigator) {
 		navigator.permissions
 			.query({ name: 'geolocation' })
@@ -100,7 +106,7 @@ function checkGeolocationAvailability(callback) {
 	}
 }
 
-function checkDeviceMotionAvailability(callback) {
+export function checkMotion(callback) {
 	if ('DeviceMotionEvent' in window) {
 		callback(true);
 	} else {
@@ -108,7 +114,7 @@ function checkDeviceMotionAvailability(callback) {
 	}
 }
 
-function checkDeviceOrientationAvailability(callback) {
+export function checkOrientation(callback) {
 	if ('DeviceOrientationEvent' in window) {
 		callback(true);
 	} else {
@@ -116,17 +122,23 @@ function checkDeviceOrientationAvailability(callback) {
 	}
 }
 
-function checkBatteryAvailability(callback) {
+export function checkBattery(callback) {
 	if ('getBattery' in navigator) {
 		navigator
 			.getBattery()
-			.then(() => {
-				callback(true);
+			.then((battery) => {
+				const data = {};
+				for (const key in battery) {
+					if (typeof battery[key] !== 'function') {
+						data[key] = battery[key];
+					}
+				}
+				callback(true, data);
 			})
 			.catch(() => {
-				callback(false);
+				callback(false, null);
 			});
 	} else {
-		callback(false);
+		callback(false, null);
 	}
 }

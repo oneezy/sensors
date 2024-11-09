@@ -1,27 +1,25 @@
 <script>
 	import { browser } from '$app/environment';
-	import { sensor } from './sensors.svelte.js';
-	import { sensors } from './sensors.js';
+	import { sensor } from '$lib/sensor/sensors.svelte.js';
+	import { sensors } from '$lib/sensor/sensors.js';
 
-	const sensorAvailabilities = $state({});
+	// Initialize sensorAvailabilities with default values
+	const initialSensorAvailabilities = {};
+	sensors.forEach(({ name }) => {
+		initialSensorAvailabilities[name] = { available: null, data: null };
+	});
+	const sensorAvailabilities = $state(initialSensorAvailabilities);
 
 	$effect(() => {
 		if (browser) {
 			sensors.forEach(({ name }) => {
-				// Initialize availability to null
-				sensorAvailabilities[name] = null;
-
-				// Call the sensor function with a callback to update availability
-				sensor(name, (available) => {
-					sensorAvailabilities[name] = available;
+				// Call the sensor function with a callback to update availability and data
+				sensor(name, (available, data) => {
+					sensorAvailabilities[name] = { available, data };
 				});
 			});
-		} else {
-			// On the server, set all availabilities to null
-			sensors.forEach(({ name }) => {
-				sensorAvailabilities[name] = null;
-			});
 		}
+		// No need for an else block since we've already initialized sensorAvailabilities
 	});
 </script>
 
@@ -30,12 +28,15 @@
 		<li title={description}>
 			<strong>{name}:</strong>
 			<code>
-				{#if sensorAvailabilities[name] === null}
+				{#if sensorAvailabilities[name].available === null}
 					<span class="text-gray-500"> Checking... </span>
 				{:else}
-					<span class={sensorAvailabilities[name] ? 'text-green-600' : 'text-red-600'}>
-						{sensorAvailabilities[name]}
+					<span class={sensorAvailabilities[name].available ? 'text-green-600' : 'text-red-600'}>
+						{sensorAvailabilities[name].available ? 'Available' : 'Not Available'}
 					</span>
+					{#if sensorAvailabilities[name].available && sensorAvailabilities[name].data}
+						<pre>{JSON.stringify(sensorAvailabilities[name].data, null, 2)}</pre>
+					{/if}
 				{/if}
 			</code>
 		</li>
