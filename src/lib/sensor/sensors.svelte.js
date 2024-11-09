@@ -1,75 +1,56 @@
 import { browser } from '$app/environment';
 
+// Import sensors array
+// import { sensors } from './sensors.js';
+
+const sensorMap = {
+	// Sensor Name: Sensor API Type or Availability Function
+	Geolocation: checkGeolocationAvailability,
+	Accelerometer: 'Accelerometer',
+	LinearAccelerationSensor: 'LinearAccelerationSensor',
+	GravitySensor: 'GravitySensor',
+	Gyroscope: 'Gyroscope',
+	Magnetometer: 'Magnetometer',
+	UncalibratedMagnetometer: 'UncalibratedMagnetometer',
+	AbsoluteOrientationSensor: 'AbsoluteOrientationSensor',
+	RelativeOrientationSensor: 'RelativeOrientationSensor',
+	AmbientLightSensor: 'AmbientLightSensor',
+	PressureSensor: 'PressureSensor',
+	ProximitySensor: 'ProximitySensor',
+	DeviceMotionEvent: checkDeviceMotionAvailability,
+	DeviceOrientationEvent: checkDeviceOrientationAvailability,
+	Battery: checkBatteryAvailability
+	// Add other sensors as needed
+};
+
 export function sensor(sensorName, callback) {
 	if (!browser) {
 		// On the server, do nothing
 		return;
 	}
 
-	switch (sensorName.toLowerCase()) {
-		// Generic Sensor API Sensors
-		case 'accelerometer':
-			checkGenericSensorAvailability('Accelerometer', callback);
-			break;
-		case 'linearaccelerationsensor':
-			checkGenericSensorAvailability('LinearAccelerationSensor', callback);
-			break;
-		case 'gravitysensor':
-			checkGenericSensorAvailability('GravitySensor', callback);
-			break;
-		case 'gyroscope':
-			checkGenericSensorAvailability('Gyroscope', callback);
-			break;
-		case 'magnetometer':
-			checkGenericSensorAvailability('Magnetometer', callback);
-			break;
-		case 'uncalibratedmagnetometer':
-			checkGenericSensorAvailability('UncalibratedMagnetometer', callback);
-			break;
-		case 'absolutedorientationsensor':
-			checkGenericSensorAvailability('AbsoluteOrientationSensor', callback);
-			break;
-		case 'relativeorientation':
-		case 'relativeorientationsensor':
-			checkGenericSensorAvailability('RelativeOrientationSensor', callback);
-			break;
-		case 'ambientlight':
-		case 'ambientlightsensor':
-			checkGenericSensorAvailability('AmbientLightSensor', callback);
-			break;
-		case 'pressure':
-		case 'pressuresensor':
-		case 'barometer':
-			checkGenericSensorAvailability('PressureSensor', callback);
-			break;
-		case 'proximity':
-			checkGenericSensorAvailability('ProximitySensor', callback);
-			break;
+	const sensorEntry = sensorMap[sensorName];
+	if (!sensorEntry) {
+		callback(false);
+		return;
+	}
 
-		// Other Sensors and APIs
-		case 'geolocation':
-			checkGeolocationAvailability(callback);
-			break;
-		case 'devicemotion':
-			checkDeviceMotionAvailability(callback);
-			break;
-		case 'deviceorientation':
-			checkDeviceOrientationAvailability(callback);
-			break;
-		case 'battery':
-			checkBatteryAvailability(callback);
-			break;
-
-		default:
-			callback(false);
+	if (typeof sensorEntry === 'string') {
+		// It's a sensor API type
+		checkGenericSensorAvailability(sensorEntry, callback);
+	} else if (typeof sensorEntry === 'function') {
+		// It's a function
+		sensorEntry(callback);
+	} else {
+		callback(false);
 	}
 }
 
 function checkGenericSensorAvailability(sensorType, callback) {
 	if (sensorType in window) {
 		try {
-			const sensor = new window[sensorType]({ frequency: 10 });
-			sensor.onerror = (event) => {
+			const sensor = new window[sensorType]();
+			sensor.addEventListener('error', (event) => {
 				if (event.error.name === 'NotAllowedError') {
 					console.log(`Permission to access ${sensorType} was denied.`);
 					callback(false);
@@ -77,11 +58,11 @@ function checkGenericSensorAvailability(sensorType, callback) {
 					console.log(`Cannot connect to the ${sensorType}.`);
 					callback(false);
 				}
-			};
-			sensor.onreading = () => {
+			});
+			sensor.addEventListener('reading', () => {
 				callback(true);
 				sensor.stop();
-			};
+			});
 			sensor.start();
 		} catch (error) {
 			if (error.name === 'SecurityError') {
@@ -91,7 +72,8 @@ function checkGenericSensorAvailability(sensorType, callback) {
 				console.log(`${sensorType} is not supported by the User Agent.`);
 				callback(false);
 			} else {
-				throw error;
+				console.error(`${sensorType} error:`, error);
+				callback(false);
 			}
 		}
 	} else {
