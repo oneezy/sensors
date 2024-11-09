@@ -1,4 +1,6 @@
+<!-- Sensor.svelte -->
 <script>
+	import { onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import { sensor } from '$lib/sensor/sensors.svelte.js';
 	import { sensors } from '$lib/sensor/sensors.js';
@@ -10,16 +12,30 @@
 	});
 	const sensorAvailabilities = $state(initialSensorAvailabilities);
 
+	// Store references to cleanup functions
+	const cleanupFunctions = {};
+
 	$effect(() => {
 		if (browser) {
 			sensors.forEach(({ name }) => {
 				// Call the sensor function with a callback to update availability and data
-				sensor(name, (available, data) => {
+				const cleanup = sensor(name, (available, data) => {
 					sensorAvailabilities[name] = { available, data };
 				});
+
+				// Store the cleanup function if it exists
+				if (cleanup) {
+					cleanupFunctions[name] = cleanup;
+				}
 			});
 		}
-		// No need for an else block since we've already initialized sensorAvailabilities
+	});
+
+	// Cleanup when the component is destroyed
+	onDestroy(() => {
+		Object.values(cleanupFunctions).forEach((cleanup) => {
+			cleanup();
+		});
 	});
 </script>
 

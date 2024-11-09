@@ -1,7 +1,5 @@
+// sensors.svelte.js
 import { browser } from '$app/environment';
-
-// Import sensors array
-// import { sensors } from './sensors.js';
 
 const sensorMap = {
 	// Sensor Name: Sensor API Type or Availability Function
@@ -20,6 +18,7 @@ const sensorMap = {
 	DeviceMotionEvent: checkMotion,
 	DeviceOrientationEvent: checkOrientation,
 	Battery: checkBattery
+	// Add other sensors as needed
 };
 
 export function sensor(sensorName, callback) {
@@ -30,18 +29,18 @@ export function sensor(sensorName, callback) {
 
 	const sensorEntry = sensorMap[sensorName];
 	if (!sensorEntry) {
-		callback(false);
+		callback(false, null);
 		return;
 	}
 
 	if (typeof sensorEntry === 'string') {
 		// It's a sensor API type
-		checkSensors(sensorEntry, callback);
+		return checkSensors(sensorEntry, callback);
 	} else if (typeof sensorEntry === 'function') {
 		// It's a function
-		sensorEntry(callback);
+		return sensorEntry(callback);
 	} else {
-		callback(false);
+		callback(false, null);
 	}
 }
 
@@ -59,17 +58,20 @@ export function checkSensors(sensorType, callback) {
 				}
 			});
 			sensor.addEventListener('reading', () => {
-				// Extract all properties of the sensor instance
+				// Collect all properties
 				const data = {};
 				for (const key in sensor) {
 					if (typeof sensor[key] !== 'function') {
 						data[key] = sensor[key];
 					}
 				}
+				// Update the data through the callback
 				callback(true, data);
-				sensor.stop();
 			});
 			sensor.start();
+
+			// Return the sensor instance for cleanup later
+			return sensor;
 		} catch (error) {
 			if (error.name === 'SecurityError') {
 				console.log(`${sensorType} construction was blocked by the Permissions Policy.`);
@@ -87,57 +89,82 @@ export function checkSensors(sensorType, callback) {
 	}
 }
 
+export function checkBattery(callback) {
+	if ('getBattery' in navigator) {
+		navigator
+			.getBattery()
+			.then((battery) => {
+				function updateBatteryInfo() {
+					const data = {};
+					for (const key in battery) {
+						const value = battery[key];
+						// Exclude event handler properties (starting with 'on') and functions
+						if (
+							typeof value !== 'function' &&
+							!key.startsWith('on') // Exclude properties like 'onchargingchange'
+						) {
+							data[key] = value;
+						}
+					}
+					// Call the callback to update the data
+					callback(true, data);
+				}
+
+				// Update battery info initially
+				updateBatteryInfo();
+
+				// Set up event listeners to update data when properties change
+				battery.addEventListener('chargingchange', updateBatteryInfo);
+				battery.addEventListener('levelchange', updateBatteryInfo);
+				battery.addEventListener('chargingtimechange', updateBatteryInfo);
+				battery.addEventListener('dischargingtimechange', updateBatteryInfo);
+
+				// Return a cleanup function
+				return () => {
+					battery.removeEventListener('chargingchange', updateBatteryInfo);
+					battery.removeEventListener('levelchange', updateBatteryInfo);
+					battery.removeEventListener('chargingtimechange', updateBatteryInfo);
+					battery.removeEventListener('dischargingtimechange', updateBatteryInfo);
+				};
+			})
+			.catch(() => {
+				callback(false, null);
+			});
+	} else {
+		callback(false, null);
+	}
+}
+
 export function checkGeolocation(callback) {
 	if ('geolocation' in navigator) {
 		navigator.permissions
 			.query({ name: 'geolocation' })
 			.then((result) => {
 				if (result.state === 'granted' || result.state === 'prompt') {
-					callback(true);
+					callback(true, null);
 				} else {
-					callback(false);
+					callback(false, null);
 				}
 			})
 			.catch(() => {
-				callback(false);
+				callback(false, null);
 			});
 	} else {
-		callback(false);
+		callback(false, null);
 	}
 }
 
 export function checkMotion(callback) {
 	if ('DeviceMotionEvent' in window) {
-		callback(true);
+		callback(true, null);
 	} else {
-		callback(false);
+		callback(false, null);
 	}
 }
 
 export function checkOrientation(callback) {
 	if ('DeviceOrientationEvent' in window) {
-		callback(true);
-	} else {
-		callback(false);
-	}
-}
-
-export function checkBattery(callback) {
-	if ('getBattery' in navigator) {
-		navigator
-			.getBattery()
-			.then((battery) => {
-				const data = {};
-				for (const key in battery) {
-					if (typeof battery[key] !== 'function') {
-						data[key] = battery[key];
-					}
-				}
-				callback(true, data);
-			})
-			.catch(() => {
-				callback(false, null);
-			});
+		callback(true, null);
 	} else {
 		callback(false, null);
 	}
